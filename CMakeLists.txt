@@ -2,12 +2,14 @@ cmake_minimum_required(VERSION 2.8.3)
 project(tzj_slam)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
-
+add_compile_options(-std=c++11 -Wdeprecated-declarations)
+# list( APPEND CMAKE_MODULE_PATH /home/sad490/catkin_ws/src/tzj_slam/cmake_modules )
+list( APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules/ )
+set(Sophus_LIBRARIES libSophus.so)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED)
+find_package(catkin REQUIRED COMPONENTS roscpp rospy pcl_ros sensor_msgs std_msgs)
 
 ## System dependencies are found with CMake's conventions
 find_package(
@@ -15,9 +17,35 @@ find_package(
 )
 
 find_package(
-  OpenCV REQUIRED
+  Pangolin REQUIRED
+)
+  
+find_package(
+  OpenCV 3.3.0 REQUIRED
 )
 
+find_package( 
+  Sophus REQUIRED 
+)
+
+find_package( G2O REQUIRED )
+
+MESSAGE(STATUS"PATH : " ${CMAKE_MODULE_PATH})
+find_package (
+    CSparse REQUIRED     
+)
+
+include_directories(
+  include ${catkin_INCLUDE_DIRS}
+	${OpenCV_INCLUDE_DIRS}
+	${Boost_INCLUDE_DIRS}
+  ${Sophus_INCLUDE_DIRS}
+  ${G2O_INCLUDE_DIRS} 
+  ${CSPARSE_INCLUDE_DIR} 
+  /usr/local/include/
+  /usr/include/suitesparse/
+  /usr/include/eigen3/
+)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -204,14 +232,30 @@ include_directories(
 # catkin_add_nosetests(test)
 
 
-add_library(feature_extract
+add_library(slamsystem
+  include/tzj_slam/transform.hpp
+  src/transform.cpp
+  include/tzj_slam/trangulation.hpp
+  src/trangulation.cpp
+  include/tzj_slam/pose_estimation.hpp
+  src/pose_estimation.cpp
   include/tzj_slam/feature_extract.hpp
   src/feature_extract.cpp
 )
-add_dependencies(feature_extract ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(feature_extract
+add_dependencies(slamsystem ${${PROJECT_NAME}_EXPORTED_TARGETS} 
+    ${catkin_EXPORTED_TARGETS}
+    ${catkin_LIBRARIES}
+    ${OpenCV_LIBS}
+    ${Sophus_LIBRARIES}
+      ${CSPARSE_LIBRARY} 
+      g2o_core g2o_stuff g2o_types_sba
+    )
+target_link_libraries(slamsystem
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
+  ${Sophus_LIBRARIES}
+  ${CSPARSE_LIBRARY} 
+  g2o_core g2o_stuff g2o_types_sba g2o_csparse_extension
 )
 
 add_executable(main
@@ -221,5 +265,5 @@ add_dependencies(main ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARG
 target_link_libraries(main
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
-  feature_extract
+  slamsystem
 )
